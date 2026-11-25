@@ -91,6 +91,21 @@ function play(btn, url) {
   audio.play().catch(() => btn.textContent = PLAY);
 }
 
+// PWA: service worker + install button
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+let deferredInstall = null;
+const installBtn = document.getElementById('install');
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; installBtn.hidden = false; });
+installBtn.onclick = async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  await deferredInstall.userChoice;
+  deferredInstall = null; installBtn.hidden = true;
+};
+addEventListener('appinstalled', () => installBtn.hidden = true);
+
 function route() {
   if (audio) { audio.pause(); audio = null; }
   const m = location.hash.match(/^#\/surah\/(\d+)/);
