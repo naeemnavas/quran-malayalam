@@ -6,6 +6,17 @@ const ERR = 'ലോഡ് ചെയ്യാനായില്ല. ഇന്റ�
 const BISM = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
 let surahs = null, audio = null;
 
+const TRANSLATIONS = [
+  { id: 'ml.abdulhameed', label: 'മലയാളം – അബ്ദുൽ ഹമീദ് & പറപ്പൂർ' },
+  { id: 'ml.karakunnu', label: 'മലയാളം – കാരക്കുന്ന് & എളയാവൂർ' },
+  { id: 'en.sahih', label: 'English – Saheeh International' },
+  { id: 'en.yusufali', label: 'English – Yusuf Ali' },
+];
+const currentTr = () => {
+  const t = localStorage.getItem('tr');
+  return TRANSLATIONS.some(x => x.id === t) ? t : TRANSLATIONS[0].id;
+};
+
 // settings
 let fs = parseFloat(localStorage.getItem('fs')) || 1;
 const setFs = v => { fs = Math.min(1.8, Math.max(0.8, v)); root.style.setProperty('--fs', fs); localStorage.setItem('fs', fs); };
@@ -54,13 +65,18 @@ async function surah(n) {
   msg('ലോഡ് ചെയ്യുന്നു…');
   try {
     surahs = surahs || await get(API + '/surah');
-    const [ar, ml, au] = await get(`${API}/surah/${n}/editions/quran-uthmani,ml.abdulhameed,ar.alafasy`);
+    const tr = currentTr();
+    const [ar, ml, au] = await get(`${API}/surah/${n}/editions/quran-uthmani,${tr},ar.alafasy`);
     localStorage.setItem('last', n);
     const s = surahs[n - 1];
     const showBism = n !== 1 && n !== 9;
+    const isEn = tr.startsWith('en.');
     app.innerHTML = `
       <a class="back" href="#/">← സൂറത്തുകൾ</a>
       <div class="head"><h1>${s.name}</h1><div>${s.englishName} · ${s.englishNameTranslation} · ${s.numberOfAyahs} ആയത്തുകൾ</div></div>
+      <label class="trsel">പരിഭാഷ:
+        <select id="tr">${TRANSLATIONS.map(t => `<option value="${t.id}"${t.id === tr ? ' selected' : ''}>${t.label}</option>`).join('')}</select>
+      </label>
       ${showBism ? `<div class="bismillah">${BISM}</div>` : ''}
       ${ar.ayahs.map((a, i) => {
         let text = a.text;
@@ -71,12 +87,17 @@ async function surah(n) {
         }
         return `<div class="ayah"><div class="row"><span class="num">${a.numberInSurah}</span>
           <button data-i="${i}">${PLAY}</button></div>
-          <div class="arabic">${esc(text)}</div><div class="ml">${esc(ml.ayahs[i].text)}</div></div>`;
+          <div class="arabic">${esc(text)}</div><div class="ml${isEn ? ' en' : ''}"${isEn ? ' lang="en"' : ''}>${esc(ml.ayahs[i].text)}</div></div>`;
       }).join('')}
       <div style="display:flex;justify-content:space-between;margin-top:12px">
         ${n > 1 ? `<a class="back" href="#/surah/${n - 1}">← മുമ്പത്തെ</a>` : '<span></span>'}
         ${n < 114 ? `<a class="back" href="#/surah/${n + 1}">അടുത്തത് →</a>` : ''}</div>`;
     window.scrollTo(0, 0);
+    document.getElementById('tr').onchange = e => {
+      localStorage.setItem('tr', e.target.value);
+      const y = window.scrollY;
+      surah(n).then(() => window.scrollTo(0, y));
+    };
     app.querySelectorAll('.ayah button').forEach(b => b.onclick = () => play(b, au.ayahs[+b.dataset.i].audio));
   } catch { msg(ERR); }
 }

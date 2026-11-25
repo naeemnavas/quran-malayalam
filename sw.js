@@ -38,7 +38,7 @@ self.addEventListener('fetch', e => {
   // Own files: network first, fall back to cache (so updates show up, offline still works)
   if (url.origin === location.origin) {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-cache' })
         .then(res => { const copy = res.clone(); caches.open(SHELL).then(c => c.put(req, copy)); return res; })
         .catch(() => caches.match(req).then(r => r || caches.match('index.html')))
     );
